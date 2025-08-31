@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>GestiPork — Email confirmado</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sans-serif;margin:24px;max-width:520px}
+    .card{border:1px solid #eee;border-radius:12px;padding:24px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+    h1{margin:0 0 8px 0;font-size:1.5rem}
+    p{line-height:1.5}
+    .ok{color:#2e7d32;font-weight:600}
+    .btn{display:inline-block;margin-top:12px;padding:10px 16px;border-radius:10px;border:2px solid #6750A4;color:#6750A4;text-decoration:none}
+    .muted{color:#666;font-size:.95rem}
+    .small{font-size:.85rem;color:#888}
+    .sp{height:16px}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>GestiPork — Cuenta</h1>
+    <p class="ok">✅ ¡Email verificado correctamente!</p>
+    <p>Ya puedes volver a la app e iniciar sesión con tu correo y contraseña.</p>
+
+    <!-- Botón que intenta abrir la app (deep link) -->
+    <a class="btn" href="gestipork://auth">Abrir GestiPork</a>
+
+    <div class="sp"></div>
+    <p class="muted">
+      Si no se abre la app automáticamente, vuelve manualmente a GestiPork y entra con tus credenciales.
+    </p>
+
+    <p class="small">
+      Consejo: guarda este email por si necesitas verificar el acceso más adelante.
+    </p>
+  </div>
+
+  <script>
+    // Opcional: si Supabase añade ?type=signup o fragmento #type=signup, mostramos un texto específico
+    (function(){
+      const q = new URLSearchParams(location.search);
+      const f = new URLSearchParams(location.hash.slice(1));
+      const type = q.get('type') || f.get('type');
+      // No es necesario hacer nada más: la verificación ya la hizo Supabase antes de redirigir aquí.
+      console.log('confirm type =', type);
+    })();
+  </script>
+</body>
+</html>
