@@ -1,66 +1,132 @@
 <!doctype html>
-<html>
+<html lang="es">
 <head>
   <meta charset="utf-8" />
-  <title>Restablecer contraseña</title>
+  <title>GestiPork — Restablecer contraseña</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>body{font-family:sans-serif;margin:24px;max-width:480px}</style>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sans-serif;margin:24px;max-width:520px}
+    .card{border:1px solid #eee;border-radius:12px;padding:24px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+    h1{margin:0 0 8px 0;font-size:1.5rem}
+    p{line-height:1.5}
+    .ok{color:#2e7d32;font-weight:600}
+    .err{color:#c62828;font-weight:600}
+    .btn{display:inline-block;margin-top:12px;padding:10px 16px;border-radius:10px;border:2px solid #6750A4;color:#6750A4;text-decoration:none}
+    .muted{color:#666;font-size:.95rem}
+    .small{font-size:.85rem;color:#888}
+    .sp{height:16px}
+    .input{width:100%;padding:10px 12px;margin:8px 0;border:1px solid #ddd;border-radius:10px;box-sizing:border-box}
+    button{padding:10px 16px;border-radius:10px;border:2px solid #6750A4;background:#fff;color:#6750A4;cursor:pointer}
+    button[disabled]{opacity:.6;cursor:not-allowed}
+  </style>
 </head>
 <body>
-  <h1>GestiPork — Cuenta</h1>
-  <p id="msg">Procesando enlace…</p>
+  <div class="card">
+    <h1>GestiPork — Cuenta</h1>
 
-  <form id="frm" style="display:none">
-    <input id="pwd1" type="password" placeholder="Nueva contraseña" required minlength="6" style="width:100%;padding:8px;margin:8px 0"/>
-    <input id="pwd2" type="password" placeholder="Repite la contraseña" required minlength="6" style="width:100%;padding:8px;margin:8px 0"/>
-    <button type="submit" style="padding:10px 16px">Cambiar contraseña</button>
-  </form>
+    <p id="msg">Procesando enlace…</p>
 
-  <p id="done" style="display:none">
-    ✅ Contraseña actualizada. Vuelve a la app e inicia sesión con la nueva contraseña.<br/>
-    <a href="gestipork://auth">Abrir GestiPork</a>
-  </p>
+    <!-- Formulario de nueva contraseña -->
+    <form id="frm" style="display:none">
+      <input id="pwd1" class="input" type="password" placeholder="Nueva contraseña" minlength="6" required />
+      <input id="pwd2" class="input" type="password" placeholder="Repite la contraseña" minlength="6" required />
+      <button id="btn" type="submit">Cambiar contraseña</button>
+    </form>
+
+    <!-- Estado final -->
+    <div id="done" style="display:none">
+      <p class="ok">✅ Contraseña actualizada.</p>
+      <p>Puedes volver a la app e iniciar sesión con tu nueva contraseña.</p>
+      <a class="btn" href="gestipork://auth">Abrir GestiPork</a>
+      <div class="sp"></div>
+      <p class="small">Si no se abre la app automáticamente, vuelve manualmente a GestiPork.</p>
+    </div>
+
+    <!-- Mensaje de confirmación por si el enlace fuese de "signup" -->
+    <div id="signup" style="display:none">
+      <p class="ok">✅ Email confirmado. Ya puedes iniciar sesión en la app.</p>
+      <a class="btn" href="gestipork://auth">Abrir GestiPork</a>
+    </div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
+    // ⚠️ Rellena con TU proyecto (Project Settings → API)
+    
     const SUPABASE_URL = "https://muwcidvjzvmjctqlvlhv.supabase.co";
     const PUBLIC_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11d2NpZHZqenZtamN0cWx2bGh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE1NDg5OTgsImV4cCI6MjA1NzEyNDk5OH0.EuJyw_sdvZ0AOyFvN9GJpLN2sVimE6bq8Ou3q41JkNE";
+
+
     const { createClient } = supabase;
     const client = createClient(SUPABASE_URL, PUBLIC_ANON_KEY);
 
-    const hashParams = new URLSearchParams(location.hash.slice(1));
-    const access_token  = hashParams.get("access_token");
-    const refresh_token = hashParams.get("refresh_token");
-    const type          = hashParams.get("type");
+    // Helpers UI
+    const msg    = document.getElementById('msg');
+    const form   = document.getElementById('frm');
+    const done   = document.getElementById('done');
+    const signup = document.getElementById('signup');
+    const btn    = document.getElementById('btn');
 
-    const msg  = document.getElementById('msg');
-    const form = document.getElementById('frm');
-    const done = document.getElementById('done');
+    // Lee tokens desde fragmento (#...) o query (?)
+    const frag = new URLSearchParams(location.hash.slice(1));
+    const q    = new URLSearchParams(location.search);
+    const access_token  = frag.get("access_token")  || q.get("access_token");
+    const refresh_token = frag.get("refresh_token") || q.get("refresh_token");
+    const type          = frag.get("type")          || q.get("type");
 
     (async () => {
+      // Si por error llega un enlace de confirmación a esta página, informamos bonito
       if (type === "signup") {
-        msg.textContent = "✅ Email confirmado. Ya puedes iniciar sesión en la app.";
+        msg.textContent = "";
+        signup.style.display = 'block';
         return;
       }
+
+      // Validación básica
       if (type !== "recovery" || !access_token || !refresh_token) {
+        msg.className = "err";
         msg.textContent = "❌ Enlace inválido o caducado.";
         return;
       }
+
+      // Abre sesión temporal de recuperación
       const { error: sErr } = await client.auth.setSession({ access_token, refresh_token });
-      if (sErr) { msg.textContent = "❌ No se pudo abrir la sesión de recuperación."; return; }
-      msg.textContent = "Introduce tu nueva contraseña."; form.style.display = 'block';
+      if (sErr) {
+        msg.className = "err";
+        msg.textContent = "❌ No se pudo abrir la sesión de recuperación.";
+        return;
+      }
+
+      // OK → mostrar formulario
+      msg.textContent = "Introduce tu nueva contraseña.";
+      form.style.display = 'block';
     })();
 
     document.getElementById('frm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const p1 = document.getElementById('pwd1').value.trim();
       const p2 = document.getElementById('pwd2').value.trim();
-      if (p1.length < 6) { alert("Mínimo 6 caracteres"); return; }
-      if (p1 !== p2)     { alert("Las contraseñas no coinciden"); return; }
-      const { error } = await client.auth.updateUser({ password: p1 });
-      if (error) { alert("No se pudo actualizar la contraseña"); return; }
-      form.style.display = 'none'; msg.textContent = "¡Listo!"; done.style.display = 'block';
+
+      if (p1.length < 6) { alert("La contraseña debe tener al menos 6 caracteres."); return; }
+      if (p1 !== p2)     { alert("Las contraseñas no coinciden."); return; }
+
+      try {
+        btn.disabled = true;
+        const { error } = await client.auth.updateUser({ password: p1 });
+        if (error) {
+          alert("No se pudo actualizar la contraseña.");
+          btn.disabled = false;
+          return;
+        }
+        form.style.display = 'none';
+        msg.textContent = "¡Listo!";
+        done.style.display = 'block';
+      } catch (_) {
+        alert("Error inesperado.");
+        btn.disabled = false;
+      }
     });
   </script>
 </body>
 </html>
+
