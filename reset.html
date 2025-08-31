@@ -1,0 +1,66 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Restablecer contraseña</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>body{font-family:sans-serif;margin:24px;max-width:480px}</style>
+</head>
+<body>
+  <h1>GestiPork — Cuenta</h1>
+  <p id="msg">Procesando enlace…</p>
+
+  <form id="frm" style="display:none">
+    <input id="pwd1" type="password" placeholder="Nueva contraseña" required minlength="6" style="width:100%;padding:8px;margin:8px 0"/>
+    <input id="pwd2" type="password" placeholder="Repite la contraseña" required minlength="6" style="width:100%;padding:8px;margin:8px 0"/>
+    <button type="submit" style="padding:10px 16px">Cambiar contraseña</button>
+  </form>
+
+  <p id="done" style="display:none">
+    ✅ Contraseña actualizada. Vuelve a la app e inicia sesión con la nueva contraseña.<br/>
+    <a href="gestipork://auth">Abrir GestiPork</a>
+  </p>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = "https://TU-PROYECTO.supabase.co";
+    const PUBLIC_ANON_KEY = "TU_PUBLIC_ANON_KEY";
+    const { createClient } = supabase;
+    const client = createClient(SUPABASE_URL, PUBLIC_ANON_KEY);
+
+    const hashParams = new URLSearchParams(location.hash.slice(1));
+    const access_token  = hashParams.get("access_token");
+    const refresh_token = hashParams.get("refresh_token");
+    const type          = hashParams.get("type");
+
+    const msg  = document.getElementById('msg');
+    const form = document.getElementById('frm');
+    const done = document.getElementById('done');
+
+    (async () => {
+      if (type === "signup") {
+        msg.textContent = "✅ Email confirmado. Ya puedes iniciar sesión en la app.";
+        return;
+      }
+      if (type !== "recovery" || !access_token || !refresh_token) {
+        msg.textContent = "❌ Enlace inválido o caducado.";
+        return;
+      }
+      const { error: sErr } = await client.auth.setSession({ access_token, refresh_token });
+      if (sErr) { msg.textContent = "❌ No se pudo abrir la sesión de recuperación."; return; }
+      msg.textContent = "Introduce tu nueva contraseña."; form.style.display = 'block';
+    })();
+
+    document.getElementById('frm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const p1 = document.getElementById('pwd1').value.trim();
+      const p2 = document.getElementById('pwd2').value.trim();
+      if (p1.length < 6) { alert("Mínimo 6 caracteres"); return; }
+      if (p1 !== p2)     { alert("Las contraseñas no coinciden"); return; }
+      const { error } = await client.auth.updateUser({ password: p1 });
+      if (error) { alert("No se pudo actualizar la contraseña"); return; }
+      form.style.display = 'none'; msg.textContent = "¡Listo!"; done.style.display = 'block';
+    });
+  </script>
+</body>
+</html>
